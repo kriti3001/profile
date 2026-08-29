@@ -1,0 +1,50 @@
+// Mock broker subscription tiers. TODO: replace with real billing/payment integration.
+export const pricingTiers = [
+  {
+    id: "free",
+    name: "Free",
+    price: 0,
+    period: "forever",
+    tagline: "Try it out with a handful of listings.",
+    features: [
+      "Up to 3 active listings",
+      "Publish to 1 partner portal",
+      "Basic leads inbox",
+      "Manual rent agreement download",
+    ],
+    cta: "Start Free",
+    highlighted: false,
+  },
+  {
+    id: "growth",
+    name: "Growth",
+    price: 1499,
+    period: "month",
+    tagline: "For active brokers managing multiple properties.",
+    features: [
+      "Up to 50 active listings",
+      "Publish to all 4 partner portals",
+      "Unified leads inbox with source tags",
+      "Auto-generated rent agreements",
+      "Sync status dashboard",
+    ],
+    cta: "Start Growth",
+    highlighted: true,
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: 4999,
+    period: "month",
+    tagline: "For agencies and high-volume teams.",
+    features: [
+      "Unlimited listings",
+      "Publish to all partner portals",
+      "Team seats & role permissions",
+      "Priority verification turnaround",
+      "Dedicated account manager",
+    ],
+    cta: "Talk to Sales",
+    highlighted: false,
+  },
+];
