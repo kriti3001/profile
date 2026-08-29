@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
-import { getPropertyById, getSimilarProperties } from "@/data/properties";
+import { getPropertyById, getSimilarProperties, properties } from "@/data/properties";
 import PropertyDetailClient from "@/components/PropertyDetailClient";
+
+// Static export needs every dynamic route pre-rendered at build time.
+export function generateStaticParams() {
+  return properties.map((p) => ({ id: p.id }));
+}
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
