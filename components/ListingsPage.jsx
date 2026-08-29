@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { List, Map as MapIcon, SlidersHorizontal, X } from "lucide-react";
 import { properties as allProperties } from "@/data/properties";
 import PropertyCard from "./PropertyCard";
 import FilterSidebar from "./FilterSidebar";
+import CityTrendWidget from "./trends/CityTrendWidget";
+import { trendCities } from "@/data/trends";
 
 const PAGE_SIZE = 6;
 
@@ -17,11 +18,15 @@ const sortFns = {
 };
 
 export default function ListingsPage({ category, title, subtitle }) {
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q") || "";
-  const initialCity = searchParams.get("city") || "";
-
-  const [query, setQuery] = useState(initialQuery || initialCity);
+  // Read ?q= / ?city= directly from the URL on mount instead of
+  // next/navigation's useSearchParams(). useSearchParams() forces this
+  // component behind a Suspense boundary, and since this site is a fully
+  // static export (no server to stream from), the build bakes the Suspense
+  // *fallback* into the static HTML instead of the real content — the page
+  // looked empty until client JS finished hydrating. Reading location.search
+  // in an effect keeps the full page in the static HTML immediately, and
+  // just narrows the results once the client mounts.
+  const [query, setQuery] = useState("");
   const [sort, setSort] = useState("relevant");
   const [view, setView] = useState("list");
   const [page, setPage] = useState(1);
@@ -33,6 +38,15 @@ export default function ListingsPage({ category, title, subtitle }) {
     type: [],
     verifiedOnly: false,
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q") || params.get("city") || "";
+    // Reading the URL (an external system) once on mount, not derived from
+    // props/state — same justified case as AuthContext's session restore.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (q) setQuery(q);
+  }, []);
 
   const categoryProperties = useMemo(
     () => allProperties.filter((p) => p.category === category),
@@ -69,6 +83,8 @@ export default function ListingsPage({ category, title, subtitle }) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const matchedCity = trendCities.find((c) => c.toLowerCase() === query.trim().toLowerCase());
+
   return (
     <div className="bg-black/[0.015] min-h-[70vh]">
       <div className="bg-white border-b border-black/10">
@@ -97,6 +113,12 @@ export default function ListingsPage({ category, title, subtitle }) {
         </div>
 
         <div className="flex-1 min-w-0">
+          {matchedCity && (
+            <div className="mb-4">
+              <CityTrendWidget city={matchedCity} />
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm text-black/55">
               <span className="font-semibold text-primary-800">{filtered.length}</span> properties found

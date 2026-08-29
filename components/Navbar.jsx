@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/buy", label: "Buy" },
   { href: "/pg-coliving", label: "PG / Co-living" },
   { href: "/commercial", label: "Commercial" },
+  { href: "/trends", label: "Trends" },
 ];
 
 export default function Navbar() {
