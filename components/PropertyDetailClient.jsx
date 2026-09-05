@@ -55,6 +55,8 @@ export default function PropertyDetailClient({ property, similar }) {
               <button
                 key={seed}
                 onClick={() => setActiveImage(i)}
+                aria-label={`View photo ${i + 1} of ${property.images.length}`}
+                aria-current={activeImage === i}
                 className={`rounded-lg overflow-hidden border-2 transition-colors ${
                   activeImage === i ? "border-primary-500" : "border-transparent"
                 }`}

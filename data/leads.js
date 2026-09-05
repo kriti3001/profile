@@ -1,11 +1,12 @@
 // Mock leads inbox — demonstrates the unified-lead-dashboard concept: enquiries
 // from every synced portal land in one place instead of four separate inboxes.
+// Names and phone numbers below are entirely fictional placeholders, not real people.
 // TODO: replace with real webhook ingestion from each partner portal + BharosaGhar direct.
 export const leads = [
   {
     id: "l1",
     propertyId: "p1",
-    propertyTitle: "Sunny 2BHK Apartment near Vijay Nagar Square",
+    propertyTitle: "Premium 1BHK Apartment in Sudama Nagar",
     name: "Ramesh Patil",
     phone: "+91 90000 11122",
     message: "Is this still available? Would like a weekend viewing.",
@@ -16,7 +17,7 @@ export const leads = [
   {
     id: "l2",
     propertyId: "p1",
-    propertyTitle: "Sunny 2BHK Apartment near Vijay Nagar Square",
+    propertyTitle: "Premium 1BHK Apartment in Sudama Nagar",
     name: "Fatima Sheikh",
     phone: "+91 90000 33344",
     message: "What's the minimum lease period?",
@@ -26,19 +27,19 @@ export const leads = [
   },
   {
     id: "l3",
-    propertyId: "p4",
-    propertyTitle: "Premium 3BHK with Clubhouse Access",
+    propertyId: "p2",
+    propertyTitle: "Elegant 1BHK Apartment in Palasia",
     name: "Karan Kapoor",
     phone: "+91 90000 55566",
-    message: "Interested — please share more photos of the clubhouse.",
+    message: "Interested — is the deposit negotiable?",
     source: "BharosaGhar direct",
     date: "2026-08-26",
     status: "New",
   },
   {
     id: "l4",
-    propertyId: "p14",
-    propertyTitle: "Premium Co-living with Rooftop Lounge",
+    propertyId: "p9",
+    propertyTitle: "Triple Sharing Co-living in Palasia",
     name: "Divya Nair",
     phone: "+91 90000 77788",
     message: "Do you offer monthly billing for utilities?",
@@ -48,22 +49,22 @@ export const leads = [
   },
   {
     id: "l5",
-    propertyId: "p8",
-    propertyTitle: "Ready-to-Move 2BHK Flat",
+    propertyId: "p6",
+    propertyTitle: "Premium 2BHK Independent House in Vijay Nagar",
     name: "Suresh Iyer",
     phone: "+91 90000 99900",
-    message: "Can you share the RERA registration number?",
+    message: "Can you share the registration/title documents?",
     source: "NoBroker",
     date: "2026-08-24",
     status: "Closed",
   },
   {
     id: "l6",
-    propertyId: "p16",
-    propertyTitle: "Furnished Office Space for Startups",
+    propertyId: "p11",
+    propertyTitle: "Retail Shop in Bhawarkuan",
     name: "Neha Gupta",
     phone: "+91 90000 12321",
-    message: "We're a 15-person team, does the space fit us comfortably?",
+    message: "What's the footfall like on weekends?",
     source: "BharosaGhar direct",
     date: "2026-08-23",
     status: "New",

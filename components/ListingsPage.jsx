@@ -1,14 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { List, Map as MapIcon, SlidersHorizontal, X } from "lucide-react";
 import { properties as allProperties } from "@/data/properties";
 import PropertyCard from "./PropertyCard";
+import PropertyCardSkeleton from "./PropertyCardSkeleton";
 import FilterSidebar from "./FilterSidebar";
 import CityTrendWidget from "./trends/CityTrendWidget";
 import { trendCities } from "@/data/trends";
 
 const PAGE_SIZE = 6;
+
+const categoryLabels = {
+  rent: "Rent",
+  buy: "Buy",
+  pg: "PG / Co-living",
+  commercial: "Commercial",
+};
 
 const sortFns = {
   relevant: (a, b) => Number(b.verified) - Number(a.verified),
@@ -31,6 +40,7 @@ export default function ListingsPage({ category, title, subtitle }) {
   const [view, setView] = useState("list");
   const [page, setPage] = useState(1);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     priceMax: null,
     bhk: [],
@@ -46,6 +56,12 @@ export default function ListingsPage({ category, title, subtitle }) {
     // props/state — same justified case as AuthContext's session restore.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (q) setQuery(q);
+
+    // Brief simulated loading state — there's no real fetch here, but a
+    // silent instant swap-in reads as broken on a listings page users
+    // expect to "load".
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
   }, []);
 
   const categoryProperties = useMemo(
@@ -89,6 +105,23 @@ export default function ListingsPage({ category, title, subtitle }) {
     <div className="bg-black/[0.015] min-h-[70vh]">
       <div className="bg-white border-b border-black/10">
         <div className="container-page py-6">
+          <nav className="text-xs text-black/45 mb-2" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-primary-600">
+              Home
+            </Link>
+            {" / "}
+            {matchedCity ? (
+              <>
+                <Link href={`/${category === "pg" ? "pg-coliving" : category}`} className="hover:text-primary-600">
+                  {categoryLabels[category]}
+                </Link>
+                {" / "}
+                <span className="text-black/60">{matchedCity}</span>
+              </>
+            ) : (
+              <span className="text-black/60">{categoryLabels[category]}</span>
+            )}
+          </nav>
           <h1 className="text-xl sm:text-2xl font-bold text-primary-800">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-black/55">{subtitle}</p>}
           <div className="mt-4">
@@ -100,6 +133,7 @@ export default function ListingsPage({ category, title, subtitle }) {
                   setPage(1);
                 }}
                 placeholder="Search locality or city"
+                aria-label="Search locality or city"
                 className="w-full bg-transparent text-sm focus:outline-none"
               />
             </div>
@@ -124,7 +158,7 @@ export default function ListingsPage({ category, title, subtitle }) {
               <span className="font-semibold text-primary-800">{filtered.length}</span> properties found
             </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               <button
                 onClick={() => setMobileFiltersOpen(true)}
                 className="lg:hidden flex items-center gap-1.5 text-sm font-medium border border-black/15 rounded-lg px-3 py-1.5"
@@ -135,6 +169,7 @@ export default function ListingsPage({ category, title, subtitle }) {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
+                aria-label="Sort properties"
                 className="text-sm border border-black/15 rounded-lg px-2.5 py-1.5 focus:outline-none"
               >
                 <option value="relevant">Most Relevant</option>
@@ -146,6 +181,7 @@ export default function ListingsPage({ category, title, subtitle }) {
               <div className="flex items-center rounded-lg border border-black/15 overflow-hidden text-sm">
                 <button
                   onClick={() => setView("list")}
+                  aria-pressed={view === "list"}
                   className={`flex items-center gap-1 px-2.5 py-1.5 ${
                     view === "list" ? "bg-primary-500 text-white" : "text-black/60"
                   }`}
@@ -154,6 +190,7 @@ export default function ListingsPage({ category, title, subtitle }) {
                 </button>
                 <button
                   onClick={() => setView("map")}
+                  aria-pressed={view === "map"}
                   className={`flex items-center gap-1 px-2.5 py-1.5 ${
                     view === "map" ? "bg-primary-500 text-white" : "text-black/60"
                   }`}
@@ -176,6 +213,12 @@ export default function ListingsPage({ category, title, subtitle }) {
                   {filtered.length} pins would appear here in a live map integration
                 </p>
               </div>
+            </div>
+          ) : loading ? (
+            <div className="mt-5 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {Array.from({ length: PAGE_SIZE }, (_, i) => (
+                <PropertyCardSkeleton key={i} />
+              ))}
             </div>
           ) : (
             <>
@@ -218,7 +261,7 @@ export default function ListingsPage({ category, title, subtitle }) {
           <div className="absolute right-0 top-0 h-full w-80 max-w-[85vw] bg-white p-5 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <p className="font-semibold text-primary-800">Filters</p>
-              <button onClick={() => setMobileFiltersOpen(false)}>
+              <button onClick={() => setMobileFiltersOpen(false)} aria-label="Close filters">
                 <X size={20} />
               </button>
             </div>

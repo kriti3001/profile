@@ -66,6 +66,7 @@ export default function EnquiryModal({ open, onClose, property }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your Name"
+                aria-label="Your Name"
                 className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
               <input
@@ -74,12 +75,14 @@ export default function EnquiryModal({ open, onClose, property }) {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Your Phone Number"
+                aria-label="Your Phone Number"
                 className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
               <textarea
                 rows={3}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                aria-label="Message"
                 className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
               />
               <button

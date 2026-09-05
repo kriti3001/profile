@@ -13,12 +13,14 @@
   --color-primary-700: #083836;
   --color-primary-900: #052220;
 
+  /* Darkened from the original #f4791e/etc so white button text clears
+     WCAG AA (4.5:1) — the brighter shade only hit ~2.8:1. */
   --color-accent-50: #fff3e8;
   --color-accent-100: #ffe1c2;
-  --color-accent-400: #ff9d4d;
-  --color-accent-500: #f4791e;
-  --color-accent-600: #d9640f;
-  --color-accent-700: #b34f0b;
+  --color-accent-400: #f37b2b;
+  --color-accent-500: #c1540b;
+  --color-accent-600: #a4470a;
+  --color-accent-700: #873b08;
 }
 
 @theme inline {

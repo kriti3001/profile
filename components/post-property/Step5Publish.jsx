@@ -39,6 +39,9 @@ export default function Step5Publish({ data, update, onPublish, publishing }) {
             <button
               type="button"
               onClick={() => toggle(p.id)}
+              role="switch"
+              aria-checked={data.portals[p.id]}
+              aria-label={`Publish to ${p.name}`}
               className={`relative w-11 h-6 rounded-full transition-colors ${
                 data.portals[p.id] ? "bg-primary-500" : "bg-black/20"
               }`}

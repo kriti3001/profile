@@ -108,6 +108,9 @@ export default function FilterSidebar({ filters, setFilters, propertyTypes }) {
         <span className="text-sm font-medium text-primary-800">Verified only</span>
         <button
           onClick={() => setFilters((f) => ({ ...f, verifiedOnly: !f.verifiedOnly }))}
+          role="switch"
+          aria-checked={filters.verifiedOnly}
+          aria-label="Show verified listings only"
           className={`relative w-10 h-6 rounded-full transition-colors ${
             filters.verifiedOnly ? "bg-primary-500" : "bg-black/20"
           }`}

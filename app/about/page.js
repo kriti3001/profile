@@ -1,4 +1,4 @@
-import { ShieldCheck, Share2, FileSignature, Users2 } from "lucide-react";
+import { ShieldCheck, Share2, FileSignature, Users2, Check, X } from "lucide-react";
 
 export const metadata = { title: "About & Trust | BharosaGhar" };
 
@@ -17,6 +17,29 @@ const contrasts = [
     icon: Users2,
     title: "Made for individual owners, not just big brokers",
     body: "Large portals are optimized for high-volume brokers. We built a simple, guided flow so a single owner listing one flat has just as smooth an experience.",
+  },
+];
+
+const comparisonRows = [
+  {
+    aspect: "Posting a listing",
+    traditional: "List separately on every portal you want visibility on",
+    bharosaghar: "List once — auto-published across 99acres, MagicBricks, Housing.com and NoBroker",
+  },
+  {
+    aspect: "Trust & verification",
+    traditional: "No standard ID or document verification",
+    bharosaghar: "Built-in ID-backed verification with a visible Verified badge",
+  },
+  {
+    aspect: "Who it's built for",
+    traditional: "Optimized for high-volume brokers",
+    bharosaghar: "A simple flow for individual owners, plus bulk tools for brokers",
+  },
+  {
+    aspect: "Rent agreements",
+    traditional: "Manual paperwork, lawyer visits or emailed PDFs",
+    bharosaghar: "Auto-generated rental agreement, ready once a tenant is confirmed",
   },
 ];
 
@@ -66,6 +89,59 @@ export default function AboutPage() {
       </section>
 
       <section className="bg-black/[0.02] py-14 sm:py-20">
+        <div className="container-page">
+          <div className="max-w-xl">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary-800">
+              BharosaGhar vs. Traditional Portals
+            </h2>
+            <p className="mt-2 text-black/55 text-sm sm:text-base">
+              We&apos;re not disparaging the portals people already use — this is simply what changes
+              when trust and reach are built in from the start.
+            </p>
+          </div>
+
+          <div className="mt-8 overflow-x-auto rounded-2xl border border-black/10 bg-white">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr className="text-left text-xs text-black/45 border-b border-black/10">
+                  <th scope="col" className="px-5 py-3 font-medium">
+                    Aspect
+                  </th>
+                  <th scope="col" className="px-5 py-3 font-medium">
+                    Traditional Portals
+                  </th>
+                  <th scope="col" className="px-5 py-3 font-medium text-primary-700">
+                    BharosaGhar
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr key={row.aspect} className="border-b border-black/5 last:border-0 align-top">
+                    <th scope="row" className="px-5 py-4 font-semibold text-primary-900 whitespace-nowrap">
+                      {row.aspect}
+                    </th>
+                    <td className="px-5 py-4 text-black/55">
+                      <span className="flex items-start gap-2">
+                        <X size={15} className="text-black/30 mt-0.5 shrink-0" aria-hidden="true" />
+                        {row.traditional}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-primary-900">
+                      <span className="flex items-start gap-2">
+                        <Check size={15} className="text-emerald-600 mt-0.5 shrink-0" aria-hidden="true" />
+                        {row.bharosaghar}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-14 sm:py-20">
         <div className="container-page max-w-2xl">
           <h2 className="text-2xl font-bold text-primary-800">Why &ldquo;Bharosa&rdquo;?</h2>
           <p className="mt-3 text-sm text-black/60 leading-relaxed">

@@ -53,6 +53,7 @@ export default function SearchBar({ defaultCategory = "rent" }) {
       <select
         value={category}
         onChange={(e) => setCategory(e.target.value)}
+        aria-label="Property type"
         className="hidden sm:block rounded-full px-4 py-3 text-sm font-medium text-primary-700 bg-primary-50 border-0 focus:outline-none focus:ring-2 focus:ring-primary-400 shrink-0"
       >
         {propertyTypes.map((t) => (
@@ -69,6 +70,7 @@ export default function SearchBar({ defaultCategory = "rent" }) {
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Search locality or city — e.g. Indore, Vijay Nagar"
+          aria-label="Search locality or city"
           className="w-full text-sm focus:outline-none placeholder:text-black/35"
         />
       </div>
