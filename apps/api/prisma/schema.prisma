@@ -1,0 +1,199 @@
+// Prisma schema for the BharosaGhar backend.
+// Run `npm run prisma:migrate` (apps/api) to apply migrations,
+// and `npm run prisma:generate` to (re)generate the Prisma Client.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  BROKER
+  TENANT
+}
+
+enum PropertyType {
+  APARTMENT
+  INDEPENDENT_HOUSE
+  VILLA
+  PENTHOUSE
+  PG
+  CO_LIVING
+  RETAIL_SHOP
+  OFFICE_SPACE
+  WAREHOUSE
+  COMMERCIAL
+}
+
+enum FurnishingStatus {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FULLY_FURNISHED
+}
+
+enum PropertyStatus {
+  DRAFT
+  PUBLISHED
+  RENTED
+  ARCHIVED
+}
+
+enum EnquirySource {
+  DIRECT
+  NINETY_NINE_ACRES
+  MAGICBRICKS
+  HOUSING
+  NOBROKER
+}
+
+enum VerificationDocumentType {
+  ID_PROOF
+  OWNERSHIP_PROOF
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AgreementStatus {
+  DRAFT
+  FINALIZED
+}
+
+enum SubscriptionPlan {
+  FREE
+  GROWTH
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  role          UserRole
+  phone         String?
+  // Links to the future Microsoft Entra External ID identity for this user.
+  entraObjectId String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  properties            Property[]
+  verificationDocuments VerificationDocument[]
+  tenantAgreements      Agreement[]             @relation("AgreementTenant")
+  ownerAgreements       Agreement[]             @relation("AgreementOwner")
+  subscriptions         Subscription[]
+
+  @@index([role])
+}
+
+model Property {
+  id                String           @id @default(uuid())
+  title             String
+  description       String
+  propertyType      PropertyType
+  price             Decimal
+  deposit           Decimal?
+  bhk               Int?
+  area              Decimal
+  furnishingStatus  FurnishingStatus
+  availableFrom     DateTime
+  city              String
+  locality          String
+  address           String
+  status            PropertyStatus   @default(DRAFT)
+  isVerified        Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  ownerId   String
+  owner     User            @relation(fields: [ownerId], references: [id])
+  photos    PropertyPhoto[]
+  enquiries Enquiry[]
+  agreements Agreement[]
+
+  @@index([city])
+  @@index([locality])
+  @@index([status])
+}
+
+model PropertyPhoto {
+  id                 String   @id @default(uuid())
+  propertyId         String
+  property           Property @relation(fields: [propertyId], references: [id])
+  // Will hold an Azure Blob Storage URL once file storage is implemented.
+  url                String
+  isLocationVerified Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([propertyId])
+}
+
+model Enquiry {
+  id            String        @id @default(uuid())
+  propertyId    String
+  property      Property      @relation(fields: [propertyId], references: [id])
+  tenantName    String
+  tenantContact String
+  message       String
+  source        EnquirySource @default(DIRECT)
+  createdAt     DateTime      @default(now())
+
+  @@index([propertyId])
+}
+
+model VerificationDocument {
+  id           String                   @id @default(uuid())
+  userId       String
+  user         User                     @relation(fields: [userId], references: [id])
+  documentType VerificationDocumentType
+  // Will hold an Azure Blob Storage URL once file storage is implemented.
+  fileUrl      String
+  status       VerificationStatus       @default(PENDING)
+  createdAt    DateTime                 @default(now())
+
+  @@index([userId])
+}
+
+model Agreement {
+  id         String          @id @default(uuid())
+  propertyId String
+  property   Property        @relation(fields: [propertyId], references: [id])
+  tenantId   String
+  tenant     User            @relation("AgreementTenant", fields: [tenantId], references: [id])
+  ownerId    String
+  owner      User            @relation("AgreementOwner", fields: [ownerId], references: [id])
+  status     AgreementStatus @default(DRAFT)
+  // Will hold the generated agreement document URL (not e-stamped at this stage).
+  fileUrl    String?
+  createdAt  DateTime        @default(now())
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([ownerId])
+}
+
+model Subscription {
+  id                     String             @id @default(uuid())
+  userId                 String
+  user                   User               @relation(fields: [userId], references: [id])
+  plan                   SubscriptionPlan
+  razorpaySubscriptionId String?
+  status                 SubscriptionStatus @default(ACTIVE)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([userId])
+}
