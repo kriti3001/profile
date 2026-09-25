@@ -1,0 +1,10 @@
+node_modules
+dist
+
+# Keep environment variables out of version control (.env.example IS committed)
+.env
+.env.*
+!.env.example
+
+# Prisma Client is generated from prisma/schema.prisma (`npm run prisma:generate`)
+/generated/prisma

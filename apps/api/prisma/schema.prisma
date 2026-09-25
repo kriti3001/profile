@@ -1,0 +1,240 @@
+// BharosaGhar database schema.
+// Enum values and field names mirror the mock data in apps/web/data/*.js so the
+// frontend can be switched to the API with minimal mapping.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  moduleFormat        = "cjs" // NestJS compiles to CommonJS
+  importFileExtension = "" // extensionless imports so ts-node/jest resolve the .ts sources
+}
+
+// Connection URL lives in prisma.config.ts (read from DATABASE_URL).
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  OWNER
+  BROKER
+  TENANT
+}
+
+// Mirrors `category` in apps/web/data/properties.js ("rent" | "buy" | "pg" | "commercial").
+// Determines how `price` is read: monthly rent vs. sale price.
+enum ListingCategory {
+  RENT
+  BUY
+  PG
+  COMMERCIAL
+}
+
+// Mirrors `type` in apps/web/data/properties.js.
+enum PropertyType {
+  APARTMENT
+  INDEPENDENT_HOUSE
+  VILLA
+  PENTHOUSE
+  PG
+  CO_LIVING
+  OFFICE_SPACE
+  RETAIL_SHOP
+  WAREHOUSE
+}
+
+// Mirrors `furnishing` in apps/web/data/properties.js.
+enum FurnishingStatus {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FULLY_FURNISHED
+}
+
+enum PropertyStatus {
+  DRAFT
+  PUBLISHED
+  RENTED
+  ARCHIVED
+}
+
+// DIRECT = enquiry made on BharosaGhar itself. The rest are the partner portals
+// from apps/web/data/portals.js, for the future portal-sync integration.
+enum EnquirySource {
+  DIRECT
+  NINETY_NINE_ACRES
+  MAGICBRICKS
+  HOUSING_COM
+  NOBROKER
+}
+
+enum DocumentType {
+  ID_PROOF
+  OWNERSHIP_PROOF
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// No e-stamping yet; that is a future integration.
+enum AgreementStatus {
+  DRAFT
+  FINALIZED
+}
+
+// Matches the broker pricing tiers in apps/web/data/pricing.js.
+enum SubscriptionPlan {
+  FREE
+  GROWTH
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  role          UserRole
+  phone         String?
+  // Object ID of the user's Microsoft Entra External ID identity. Nullable until auth is wired up.
+  entraObjectId String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  properties            Property[]
+  verificationDocuments VerificationDocument[]
+  tenantAgreements      Agreement[]            @relation("AgreementTenant")
+  ownerAgreements       Agreement[]            @relation("AgreementOwner")
+  subscriptions         Subscription[]
+
+  @@index([role])
+}
+
+model Property {
+  id               String           @id @default(uuid())
+  title            String
+  description      String
+  category         ListingCategory
+  propertyType     PropertyType
+  // Whole rupees. Monthly rent for RENT/PG/COMMERCIAL listings, sale price for BUY.
+  price            Int
+  // Null for BUY listings, which have no security deposit.
+  deposit          Int?
+  // Null for commercial/PG listings where BHK doesn't apply.
+  bhk              Int?
+  // Carpet area in sq ft.
+  area             Int
+  furnishingStatus FurnishingStatus
+  availableFrom    DateTime         @db.Date
+  city             String
+  locality         String
+  address          String?
+  status           PropertyStatus   @default(DRAFT)
+  isVerified       Boolean          @default(false)
+  ownerId          String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  owner      User            @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  photos     PropertyPhoto[]
+  enquiries  Enquiry[]
+  agreements Agreement[]
+
+  @@index([city])
+  @@index([locality])
+  @@index([status])
+  // Primary search path: published listings in a city, narrowed by locality.
+  @@index([status, city, locality])
+  @@index([ownerId])
+}
+
+model PropertyPhoto {
+  id                 String   @id @default(uuid())
+  propertyId         String
+  // Placeholder for now; will hold an Azure Blob Storage URL.
+  url                String
+  // Set by the future geo-tag verification feature.
+  isLocationVerified Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+model Enquiry {
+  id            String        @id @default(uuid())
+  propertyId    String
+  tenantName    String
+  tenantContact String
+  message       String?
+  source        EnquirySource @default(DIRECT)
+  createdAt     DateTime      @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, createdAt])
+}
+
+model VerificationDocument {
+  id           String             @id @default(uuid())
+  userId       String
+  documentType DocumentType
+  // Placeholder for now; will hold an Azure Blob Storage URL.
+  fileUrl      String
+  status       VerificationStatus @default(PENDING)
+  createdAt    DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Agreement {
+  id         String          @id @default(uuid())
+  propertyId String
+  tenantId   String
+  ownerId    String
+  status     AgreementStatus @default(DRAFT)
+  // Placeholder for now; will hold an Azure Blob Storage URL to the generated agreement.
+  fileUrl    String?
+  createdAt  DateTime        @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  tenant   User     @relation("AgreementTenant", fields: [tenantId], references: [id], onDelete: Restrict)
+  owner    User     @relation("AgreementOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([ownerId])
+}
+
+model Subscription {
+  id                     String             @id @default(uuid())
+  // Should reference a BROKER user; enforced in the service layer (Prisma can't constrain on role).
+  userId                 String
+  plan                   SubscriptionPlan
+  razorpaySubscriptionId String?            @unique
+  status                 SubscriptionStatus
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
