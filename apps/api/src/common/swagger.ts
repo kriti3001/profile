@@ -8,8 +8,8 @@ export const SWAGGER_PATH = 'docs';
 /**
  * Serves Swagger UI at /docs. Its Authorize dialog offers two ways to call protected routes:
  *  - "entra": sign in with Entra External ID directly from Swagger (authorization code + PKCE).
- *    Requires http://localhost:<port>/docs/oauth2-redirect.html as a Single-page application
- *    redirect URI on the app registration.
+ *    Requires <API_PUBLIC_URL>/docs/oauth2-redirect.html (locally http://localhost:3001/docs/oauth2-redirect.html)
+ *    as a Single-page application redirect URI on the app registration.
  *  - "bearer": paste an access token obtained elsewhere.
  */
 export function setupSwagger(app: INestApplication) {
@@ -20,6 +20,13 @@ export function setupSwagger(app: INestApplication) {
   const entraBase =
     tenantId && subdomain ? `https://${subdomain}.ciamlogin.com/${tenantId}/oauth2/v2.0` : 'https://entra-not-configured.invalid';
   const apiScope = `api://${clientId ?? 'CLIENT_ID'}/access_as_user`;
+  // Set explicitly: Swagger UI's default derives it from the page path, and since the UI is served at
+  // /docs (no trailing slash) that resolves to /oauth2-redirect.html, which doesn't exist.
+  const publicUrl = (config.get<string>('API_PUBLIC_URL') || `http://localhost:${config.get<string>('PORT') || 3001}`).replace(
+    /\/+$/,
+    '',
+  );
+  const oauth2RedirectUrl = `${publicUrl}/${SWAGGER_PATH}/oauth2-redirect.html`;
 
   const document = SwaggerModule.createDocument(
     app,
@@ -51,6 +58,7 @@ export function setupSwagger(app: INestApplication) {
   SwaggerModule.setup(SWAGGER_PATH, app, document, {
     swaggerOptions: {
       persistAuthorization: true,
+      oauth2RedirectUrl,
       initOAuth: clientId ? { clientId, usePkceWithAuthorizationCodeGrant: true, scopes: [apiScope] } : undefined,
     },
   });
