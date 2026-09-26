@@ -37,7 +37,7 @@ export default function AccountPage() {
           />
         </div>
         <p className="text-xs text-black/35">
-          This is a demo profile — editing is disabled since there is no real backend.
+          Profile editing isn&apos;t available yet.
         </p>
       </div>
     </div>

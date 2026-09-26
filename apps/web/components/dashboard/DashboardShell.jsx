@@ -15,7 +15,7 @@ const navItems = [
 ];
 
 export default function DashboardShell({ children }) {
-  const { user, ready } = useAuth();
+  const { user, ready, error } = useAuth();
   const pathname = usePathname();
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -27,8 +27,9 @@ export default function DashboardShell({ children }) {
         <div className="max-w-sm mx-auto">
           <h1 className="text-xl font-semibold text-primary-800">Login to view your Dashboard</h1>
           <p className="mt-2 text-sm text-black/55">
-            This is a mock login for the demo — pick Owner or Broker to see the dashboard.
+            Sign in or create an account as a property owner or broker to manage your listings.
           </p>
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <button
             onClick={() => setAuthOpen(true)}
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold px-5 py-2.5"

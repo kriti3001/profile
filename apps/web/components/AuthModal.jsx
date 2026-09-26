@@ -4,21 +4,19 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-// Mock login/signup only — no real auth flow, no password check.
-// TODO: replace with real authentication (e.g. OTP login, OAuth).
+// Hands off to the Microsoft Entra External ID sign-up/sign-in page (redirect).
+// Name, email and password are collected there; the role picked here is applied
+// only when the account is first created.
 export default function AuthModal({ open, onClose }) {
-  const { login } = useAuth();
+  const { login, error } = useAuth();
   const [mode, setMode] = useState("login");
   const [role, setRole] = useState("owner");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
 
   if (!open) return null;
 
   const submit = (e) => {
     e.preventDefault();
-    login({ name, role, phone });
-    onClose();
+    login({ role });
   };
 
   return (
@@ -37,7 +35,8 @@ export default function AuthModal({ open, onClose }) {
           {mode === "login" ? "Login to BharosaGhar" : "Create your account"}
         </h2>
         <p className="text-xs text-black/50 mt-1">
-          Demo only — no real verification, just pick a role to preview the dashboard.
+          You&apos;ll continue to BharosaGhar&apos;s secure sign-in page to{" "}
+          {mode === "login" ? "sign in" : "create your account"} with your email.
         </p>
 
         <div className="mt-4 flex rounded-lg bg-black/5 p-1 text-sm">
@@ -60,31 +59,11 @@ export default function AuthModal({ open, onClose }) {
         </div>
 
         <form onSubmit={submit} className="mt-4 space-y-3">
-          {mode === "signup" && (
-            <div>
-              <label className="text-xs font-medium text-black/60">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Anjali Sharma"
-                className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-              />
-            </div>
-          )}
           <div>
-            <label className="text-xs font-medium text-black/60">Mobile Number</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98765 43210"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-black/60">I am a...</label>
+            <label className="text-xs font-medium text-black/60">
+              I am a...
+              {mode === "login" && <span className="text-black/40"> (used if you&apos;re new here)</span>}
+            </label>
             <div className="mt-1 grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -111,11 +90,13 @@ export default function AuthModal({ open, onClose }) {
             </div>
           </div>
 
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
           <button
             type="submit"
             className="w-full rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold py-2.5 transition-colors"
           >
-            {mode === "login" ? "Login" : "Create Account"}
+            {mode === "login" ? "Continue to Login" : "Continue to Sign Up"}
           </button>
         </form>
       </div>

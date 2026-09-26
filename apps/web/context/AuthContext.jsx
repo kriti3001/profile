@@ -1,58 +1,169 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import {
+  EventType,
+  InteractionRequiredAuthError,
+  InteractionStatus,
+  PublicClientApplication,
+} from "@azure/msal-browser";
+import { MsalProvider, useMsal } from "@azure/msal-react";
+import { API_BASE_URL, apiScopes, authConfigured, msalConfig } from "@/lib/authConfig";
 
-// Mock-only auth. No real backend, no real sessions — just localStorage
-// so the demo "remembers" the logged-in role across page navigations.
+// Real auth via Microsoft Entra External ID (MSAL). The context keeps the shape the
+// mock version exposed — { user, ready, login, logout } with user = { name, role, phone } —
+// so Navbar, DashboardShell and the account page work unchanged. `user` is the app's own
+// User record from GET /auth/me, with role lowercased ("owner" | "broker" | "tenant").
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = "bharosaghar_mock_user";
+// Role picked in the sign-up modal, held across the Entra redirect and sent on the first
+// /auth/me call (the API only applies it when it creates the user record).
+const PENDING_ROLE_KEY = "bharosaghar_pending_role";
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [ready, setReady] = useState(false);
+  // MSAL is browser-only: during static prerendering there is no instance.
+  const [instance] = useState(() => {
+    if (typeof window === "undefined" || !authConfigured) return null;
+    const pca = new PublicClientApplication(msalConfig);
+    pca.addEventCallback((event) => {
+      if (event.eventType === EventType.LOGIN_SUCCESS && event.payload?.account) {
+        pca.setActiveAccount(event.payload.account);
+      }
+    });
+    return pca;
+  });
+
+  if (!instance) return <SignedOutAuth>{children}</SignedOutAuth>;
+  return (
+    <MsalProvider instance={instance}>
+      <MsalAuth>{children}</MsalAuth>
+    </MsalProvider>
+  );
+}
+
+// Used while prerendering (ready=false, so nothing auth-dependent flashes before hydration)
+// and when sign-in isn't configured (ready=true, signed out).
+function SignedOutAuth({ children }) {
+  const value = {
+    user: null,
+    ready: !authConfigured,
+    error: authConfigured ? null : "Sign-in isn't configured for this build.",
+    login: () => {},
+    logout: () => {},
+    getAccessToken: async () => {
+      throw new Error("Not signed in");
+    },
+  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function MsalAuth({ children }) {
+  const { instance, accounts, inProgress } = useMsal();
+  const account = instance.getActiveAccount() ?? accounts[0] ?? null;
+  const accountId = account?.homeAccountId ?? null;
+  // Result of GET /auth/me for `accountId`.
+  const [me, setMe] = useState({ accountId: null, user: null, error: null });
+
+  const getAccessToken = useCallback(async () => {
+    if (!account) throw new Error("Not signed in");
+    try {
+      const result = await instance.acquireTokenSilent({ scopes: apiScopes, account });
+      return result.accessToken;
+    } catch (err) {
+      if (err instanceof InteractionRequiredAuthError) {
+        await instance.acquireTokenRedirect({ scopes: apiScopes, account });
+      }
+      throw err;
+    }
+  }, [instance, account]);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      // Reading persisted mock-session state on mount — localStorage is an
-      // external system, not derivable from props/state, so this is exempt.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      // ignore
-    }
-    setReady(true);
-  }, []);
+    if (inProgress !== InteractionStatus.None || !accountId) return;
+    let cancelled = false;
 
-  const login = ({ name, role, phone }) => {
-    const mockUser = {
-      name: name || (role === "broker" ? "Rohan Mehta" : "Anjali Sharma"),
-      role: role === "broker" ? "broker" : "owner",
-      phone: phone || "+91 98765 43210",
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const url = new URL("/auth/me", API_BASE_URL);
+        const pendingRole = readSession(PENDING_ROLE_KEY);
+        if (pendingRole) url.searchParams.set("role", pendingRole);
+
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.message || `GET /auth/me failed (${res.status})`);
+        }
+        const dbUser = await res.json();
+        removeSession(PENDING_ROLE_KEY);
+        if (!cancelled) setMe({ accountId, user: toAppUser(dbUser), error: null });
+      } catch (err) {
+        if (!cancelled) setMe({ accountId, user: null, error: err.message || "Sign-in failed" });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
     };
-    setUser(mockUser);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(mockUser));
-    } catch {
-      // ignore
-    }
-  };
+  }, [inProgress, accountId, getAccessToken]);
 
-  const logout = () => {
-    setUser(null);
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, ready, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const login = useCallback(
+    ({ role } = {}) => {
+      if (role) writeSession(PENDING_ROLE_KEY, role.toUpperCase());
+      instance.loginRedirect({ scopes: apiScopes }).catch(() => {});
+    },
+    [instance],
   );
+
+  const logout = useCallback(() => {
+    removeSession(PENDING_ROLE_KEY);
+    instance.logoutRedirect({ account }).catch(() => {});
+  }, [instance, account]);
+
+  const settled = me.accountId === accountId;
+  const value = {
+    user: accountId && settled ? me.user : null,
+    ready: inProgress === InteractionStatus.None && (!accountId || settled),
+    error: accountId && settled ? me.error : null,
+    login,
+    logout,
+    getAccessToken,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function toAppUser(dbUser) {
+  return {
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.name,
+    phone: dbUser.phone ?? "",
+    role: dbUser.role.toLowerCase(),
+  };
+}
+
+function readSession(key) {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(key, value) {
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+}
+
+function removeSession(key) {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
 }
 
 export function useAuth() {
