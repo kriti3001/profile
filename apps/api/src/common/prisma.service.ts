@@ -7,7 +7,15 @@ import { PrismaClient } from '../../generated/prisma/client';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
   constructor(config: ConfigService) {
-    super({ adapter: new PrismaPg({ connectionString: config.getOrThrow<string>('DATABASE_URL') }) });
+    super({
+      adapter: new PrismaPg({
+        connectionString: config.getOrThrow<string>('DATABASE_URL'),
+        // Opening a connection to Azure PostgreSQL takes ~1.5s (TLS), so keep idle connections for
+        // 5 minutes instead of pg's 10s default, with TCP keep-alive so they aren't silently dropped.
+        idleTimeoutMillis: 5 * 60_000,
+        keepAlive: true,
+      }),
+    });
   }
 
   async onModuleDestroy() {

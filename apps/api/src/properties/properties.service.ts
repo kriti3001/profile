@@ -40,7 +40,10 @@ export class PropertiesService {
       price: minPrice !== undefined || maxPrice !== undefined ? { gte: minPrice, lte: maxPrice } : undefined,
     };
 
-    const [data, total] = await this.prisma.$transaction([
+    // Two independent reads in parallel, deliberately not a $transaction: a transaction must start within
+    // Prisma's 2s maxWait, which a fresh connection to the Azure database (~1.5s TLS handshake) can exceed
+    // (P2028). A page and its total count being momentarily out of step is harmless for listings.
+    const [data, total] = await Promise.all([
       this.prisma.property.findMany({
         where,
         include: withPhotos,
