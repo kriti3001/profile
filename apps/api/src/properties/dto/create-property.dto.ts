@@ -1,23 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  ArrayMaxSize,
-  IsArray,
-  IsEnum,
-  IsIn,
-  IsInt,
-  IsISO8601,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUrl,
-  Max,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsIn, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { FurnishingStatus, ListingCategory, PropertyStatus, PropertyType } from '../../../generated/prisma/enums';
 
-// ownerId, isVerified and photo verification are never accepted from clients; the global
-// ValidationPipe rejects any field not declared here.
+// ownerId, isVerified and photos are never accepted here; the global ValidationPipe rejects any
+// field not declared. Photos are added after creation via POST /uploads/sas-token + POST /properties/:id/photos.
 export class CreatePropertyDto {
   @ApiProperty({ example: 'Sunny 2BHK Apartment in Palasia', maxLength: 150 })
   @IsString()
@@ -96,16 +82,4 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsIn([PropertyStatus.DRAFT, PropertyStatus.PUBLISHED])
   status?: PropertyStatus;
-
-  @ApiPropertyOptional({
-    type: [String],
-    maxItems: 20,
-    example: ['https://example.com/photo-1.jpg'],
-    description: 'Photo URLs. Placeholder until uploads to Blob Storage are added.',
-  })
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(20)
-  @IsUrl({ require_protocol: true, protocols: ['https', 'http'] }, { each: true })
-  photoUrls?: string[];
 }

@@ -8,6 +8,7 @@ import { EnquiriesModule } from './enquiries/enquiries.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PropertiesModule } from './properties/properties.module';
 import { SearchModule } from './search/search.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { VerificationModule } from './verification/verification.module';
 
@@ -19,6 +20,7 @@ import { VerificationModule } from './verification/verification.module';
     UsersModule,
     PropertiesModule,
     SearchModule,
+    UploadsModule,
     EnquiriesModule,
     VerificationModule,
     AgreementsModule,

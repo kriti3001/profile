@@ -1,27 +1,40 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Property, PropertyStatus, User } from '../../generated/prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { StorageService } from '../storage/storage.service';
+import { UploadTarget } from '../storage/upload-rules';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { ListPropertiesQueryDto, PUBLIC_STATUSES } from './dto/list-properties.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 
 const withPhotos = { photos: { orderBy: { createdAt: 'asc' } } } satisfies Prisma.PropertyInclude;
+const MAX_PHOTOS_PER_PROPERTY = 20;
 
 @Injectable()
 export class PropertiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   create(owner: User, dto: CreatePropertyDto) {
-    const { photoUrls, availableFrom, ...fields } = dto;
+    const { availableFrom, ...fields } = dto;
     return this.prisma.property.create({
-      data: {
-        ...fields,
-        availableFrom: new Date(availableFrom),
-        ownerId: owner.id,
-        photos: photoUrls?.length ? { create: photoUrls.map((url) => ({ url })) } : undefined,
-      },
+      data: { ...fields, availableFrom: new Date(availableFrom), ownerId: owner.id },
       include: withPhotos,
     });
+  }
+
+  /** Records a photo the owner has uploaded to Blob Storage via a SAS URL from POST /uploads/sas-token. */
+  async addPhoto(user: User, propertyId: string, blobUrl: string) {
+    await this.findOwned(user, propertyId);
+    const count = await this.prisma.propertyPhoto.count({ where: { propertyId } });
+    if (count >= MAX_PHOTOS_PER_PROPERTY) {
+      throw new BadRequestException(`A property can have at most ${MAX_PHOTOS_PER_PROPERTY} photos`);
+    }
+
+    const url = await this.storage.promoteUpload(UploadTarget.PROPERTY_PHOTO, propertyId, blobUrl);
+    return this.prisma.propertyPhoto.create({ data: { propertyId, url } });
   }
 
   async list(query: ListPropertiesQueryDto) {
