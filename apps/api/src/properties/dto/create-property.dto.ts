@@ -1,6 +1,28 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsIn, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
-import { FurnishingStatus, ListingCategory, PropertyStatus, PropertyType } from '../../../generated/prisma/enums';
+import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsArray,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsISO8601,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+import { Facing, FurnishingStatus, ListingCategory, PropertyStatus, PropertyType } from '../../../generated/prisma/enums';
+import { AMENITIES, type Amenity } from '../amenities';
+
+/**
+ * For optional fields whose column is NOT NULL: skip validation only when the field is absent, so an explicit
+ * null fails validation (400). @IsOptional would let null through to Prisma, which rejects it as a 500.
+ */
+export const presentEvenIfNull = (_obj: object, value: unknown) => value !== undefined;
 
 // ownerId, isVerified and photos are never accepted here; the global ValidationPipe rejects any
 // field not declared. Photos are added after creation via POST /uploads/sas-token + POST /properties/:id/photos.
@@ -79,7 +101,53 @@ export class CreatePropertyDto {
     default: PropertyStatus.DRAFT,
     description: 'Publish immediately, or save as a draft (hidden from public listings)',
   })
-  @IsOptional()
+  @ValidateIf(presentEvenIfNull)
   @IsIn([PropertyStatus.DRAFT, PropertyStatus.PUBLISHED])
   status?: PropertyStatus;
+
+  @ApiPropertyOptional({
+    type: [String],
+    enum: AMENITIES,
+    example: ['Lift', 'Power Backup', 'Covered Parking'],
+    description: 'Amenity labels from the allowed list (no duplicates)',
+  })
+  @ValidateIf(presentEvenIfNull)
+  @IsArray()
+  @ArrayMaxSize(AMENITIES.length)
+  @ArrayUnique()
+  @IsIn(AMENITIES, { each: true })
+  amenities?: Amenity[];
+
+  @ApiPropertyOptional({ enum: Facing, enumName: 'Facing', nullable: true })
+  @IsOptional()
+  @IsEnum(Facing)
+  facing?: Facing | null;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: 0,
+    maximum: 200,
+    example: 7,
+    description: '0 = ground floor. Null for a whole building (e.g. a villa). Must not exceed totalFloors.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(200)
+  floorNumber?: number | null;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: 0,
+    maximum: 200,
+    example: 11,
+    description: 'Floors above ground ("7th of 11" -> 11, "G+2" -> 2, single-storey -> 0)',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(200)
+  totalFloors?: number | null;
 }

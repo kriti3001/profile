@@ -14,7 +14,8 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { FurnishingStatus, ListingCategory, PropertyStatus, PropertyType } from '../../../generated/prisma/enums';
+import { Facing, FurnishingStatus, ListingCategory, PropertyStatus, PropertyType } from '../../../generated/prisma/enums';
+import { AMENITIES, type Amenity } from '../amenities';
 
 /** Statuses anyone may see. DRAFT and ARCHIVED listings are only visible to their owner (GET /properties/mine). */
 export const PUBLIC_STATUSES: PropertyStatus[] = [PropertyStatus.PUBLISHED, PropertyStatus.RENTED];
@@ -156,6 +157,32 @@ export class ListPropertiesQueryDto {
   @Transform(toBoolean)
   @IsBoolean()
   verified?: boolean;
+
+  @ApiPropertyOptional({
+    type: [String],
+    enum: AMENITIES,
+    example: ['Lift', 'Power Backup'],
+    description: 'Listings that have ALL of these amenities (repeat or comma-separate)',
+  })
+  @IsOptional()
+  @Transform(toList)
+  @IsArray()
+  @ArrayMaxSize(AMENITIES.length)
+  @IsIn(AMENITIES, { each: true })
+  amenities?: Amenity[];
+
+  @ApiPropertyOptional({
+    enum: Facing,
+    enumName: 'Facing',
+    isArray: true,
+    description: 'One or more facing directions (repeat or comma-separate); matches any of them',
+  })
+  @IsOptional()
+  @Transform(toList)
+  @IsArray()
+  @ArrayMaxSize(Object.keys(Facing).length)
+  @IsEnum(Facing, { each: true })
+  facing?: Facing[];
 
   @ApiPropertyOptional({
     enum: SORT_OPTIONS,

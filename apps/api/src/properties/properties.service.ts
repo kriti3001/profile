@@ -30,6 +30,12 @@ function escapeLike(term: string): string {
 }
 
 /** An inclusive { gte, lte } filter, or undefined if neither bound is set. */
+function assertFloorWithinBuilding(floorNumber?: number | null, totalFloors?: number | null) {
+  if (floorNumber != null && totalFloors != null && floorNumber > totalFloors) {
+    throw new BadRequestException('floorNumber must not be greater than totalFloors');
+  }
+}
+
 function range(label: string, min?: number, max?: number): Prisma.IntFilter | undefined {
   if (min !== undefined && max !== undefined && min > max) {
     throw new BadRequestException(`min${label} must not be greater than max${label}`);
@@ -45,6 +51,7 @@ export class PropertiesService {
   ) {}
 
   create(owner: User, dto: CreatePropertyDto) {
+    assertFloorWithinBuilding(dto.floorNumber, dto.totalFloors);
     const { availableFrom, ...fields } = dto;
     return this.prisma.property.create({
       data: { ...fields, availableFrom: new Date(availableFrom), ownerId: owner.id },
@@ -84,6 +91,8 @@ export class PropertiesService {
       bhk: query.bhk?.length || query.minBhk !== undefined ? { in: query.bhk, gte: query.minBhk } : undefined,
       furnishingStatus: query.furnishing?.length ? { in: query.furnishing } : undefined,
       isVerified: query.verified,
+      amenities: query.amenities?.length ? { hasEvery: query.amenities } : undefined,
+      facing: query.facing?.length ? { in: query.facing } : undefined,
       // Every term must match somewhere: "balcony indore" finds an Indore listing whose description mentions a balcony.
       AND: terms.length
         ? terms.map((term) => ({
@@ -127,7 +136,11 @@ export class PropertiesService {
   }
 
   async update(user: User, id: string, dto: UpdatePropertyDto) {
-    await this.findOwned(user, id);
+    const existing = await this.findOwned(user, id);
+    assertFloorWithinBuilding(
+      dto.floorNumber !== undefined ? dto.floorNumber : existing.floorNumber,
+      dto.totalFloors !== undefined ? dto.totalFloors : existing.totalFloors,
+    );
     const { availableFrom, ...fields } = dto;
     return this.prisma.property.update({
       where: { id },

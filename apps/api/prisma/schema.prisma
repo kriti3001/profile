@@ -53,6 +53,19 @@ enum FurnishingStatus {
   FULLY_FURNISHED
 }
 
+// Mirrors `facing` in apps/web/data/properties.js (CORNER_PLOT is used there for plots facing two roads).
+enum Facing {
+  NORTH
+  NORTH_EAST
+  EAST
+  SOUTH_EAST
+  SOUTH
+  SOUTH_WEST
+  WEST
+  NORTH_WEST
+  CORNER_PLOT
+}
+
 enum PropertyStatus {
   DRAFT
   PUBLISHED
@@ -143,6 +156,14 @@ model Property {
   city             String
   locality         String
   address          String?
+  // Display labels, e.g. "Power Backup", "Lift". Allowed values are validated by the API (properties/amenities.ts),
+  // so new ones need no migration.
+  amenities        String[]         @default([])
+  facing           Facing?
+  // 0 = ground floor; null when the listing is a whole building (e.g. a villa, "G+2" in the mock data).
+  floorNumber      Int?
+  // Floors above ground: "7th of 11" -> 11, "G+2" -> 2, single-storey -> 0.
+  totalFloors      Int?
   status           PropertyStatus   @default(DRAFT)
   isVerified       Boolean          @default(false)
   ownerId          String
@@ -169,6 +190,8 @@ model Property {
   @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_description_trgm_idx")
   @@index([city(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_city_trgm_idx")
   @@index([locality(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_locality_trgm_idx")
+  // "Has all of these amenities" filters (array containment, @>).
+  @@index([amenities], type: Gin)
 }
 
 model PropertyPhoto {

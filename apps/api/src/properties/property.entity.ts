@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { FurnishingStatus, ListingCategory, PropertyStatus, PropertyType } from '../../generated/prisma/enums';
+import { Facing, FurnishingStatus, ListingCategory, PropertyStatus, PropertyType } from '../../generated/prisma/enums';
 
 // Swagger schemas for property responses.
 
@@ -62,6 +62,18 @@ export class PropertyEntity {
 
   @ApiProperty({ type: String, nullable: true })
   address: string | null;
+
+  @ApiProperty({ type: [String], example: ['Lift', 'Power Backup'] })
+  amenities: string[];
+
+  @ApiProperty({ enum: Facing, enumName: 'Facing', nullable: true })
+  facing: Facing | null;
+
+  @ApiProperty({ type: Number, nullable: true, description: '0 = ground; null for a whole building' })
+  floorNumber: number | null;
+
+  @ApiProperty({ type: Number, nullable: true, description: 'Floors above ground' })
+  totalFloors: number | null;
 
   @ApiProperty({ enum: PropertyStatus, enumName: 'PropertyStatus' })
   status: PropertyStatus;
