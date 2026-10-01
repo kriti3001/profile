@@ -4,11 +4,38 @@ import { PrismaService } from '../common/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { UploadTarget } from '../storage/upload-rules';
 import { CreatePropertyDto } from './dto/create-property.dto';
-import { ListPropertiesQueryDto, PUBLIC_STATUSES } from './dto/list-properties.dto';
+import { ListPropertiesQueryDto, PUBLIC_STATUSES, SortOption } from './dto/list-properties.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 
 const withPhotos = { photos: { orderBy: { createdAt: 'asc' } } } satisfies Prisma.PropertyInclude;
 const MAX_PHOTOS_PER_PROPERTY = 20;
+
+const SEARCH_FIELDS = ['title', 'description', 'city', 'locality'] as const;
+const MAX_SEARCH_TERMS = 10;
+
+// Newest first breaks ties within a price; id makes paging deterministic.
+const SORT_ORDER: Record<SortOption, Prisma.PropertyOrderByWithRelationInput[]> = {
+  newest: [{ createdAt: 'desc' }, { id: 'asc' }],
+  price_asc: [{ price: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
+  price_desc: [{ price: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+  price_dec: [{ price: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+};
+
+/**
+ * Prisma's `contains` becomes ILIKE '%term%' without escaping LIKE wildcards, so a search for "%" or "_"
+ * would match everything. Escape them (and the escape character) with Postgres's default LIKE escape, "\".
+ */
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, '\\$&');
+}
+
+/** An inclusive { gte, lte } filter, or undefined if neither bound is set. */
+function range(label: string, min?: number, max?: number): Prisma.IntFilter | undefined {
+  if (min !== undefined && max !== undefined && min > max) {
+    throw new BadRequestException(`min${label} must not be greater than max${label}`);
+  }
+  return min !== undefined || max !== undefined ? { gte: min, lte: max } : undefined;
+}
 
 @Injectable()
 export class PropertiesService {
@@ -38,19 +65,31 @@ export class PropertiesService {
   }
 
   async list(query: ListPropertiesQueryDto) {
-    const { city, locality, category, propertyType, minPrice, maxPrice, page, limit } = query;
-    if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
-      throw new BadRequestException('minPrice must not be greater than maxPrice');
+    const { city, locality, category, page, limit } = query;
+    const terms = query.q?.trim().split(/\s+/).filter(Boolean) ?? [];
+    if (terms.length > MAX_SEARCH_TERMS) {
+      throw new BadRequestException(`q can contain at most ${MAX_SEARCH_TERMS} words`);
     }
 
-    // Undefined filters are ignored by Prisma; status + city + locality hit the composite index.
+    // Undefined filters are ignored by Prisma. status + city + locality hit the composite index;
+    // the q terms use the trigram indexes on the searched columns.
     const where: Prisma.PropertyWhereInput = {
       status: query.status ?? PropertyStatus.PUBLISHED,
       city,
       locality,
       category,
-      propertyType,
-      price: minPrice !== undefined || maxPrice !== undefined ? { gte: minPrice, lte: maxPrice } : undefined,
+      propertyType: query.propertyType?.length ? { in: query.propertyType } : undefined,
+      price: range('Price', query.minPrice, query.maxPrice),
+      area: range('Area', query.minArea, query.maxArea),
+      bhk: query.bhk?.length || query.minBhk !== undefined ? { in: query.bhk, gte: query.minBhk } : undefined,
+      furnishingStatus: query.furnishing?.length ? { in: query.furnishing } : undefined,
+      isVerified: query.verified,
+      // Every term must match somewhere: "balcony indore" finds an Indore listing whose description mentions a balcony.
+      AND: terms.length
+        ? terms.map((term) => ({
+            OR: SEARCH_FIELDS.map((field) => ({ [field]: { contains: escapeLike(term), mode: 'insensitive' } })),
+          }))
+        : undefined,
     };
 
     // Two independent reads in parallel, deliberately not a $transaction: a transaction must start within
@@ -60,7 +99,7 @@ export class PropertiesService {
       this.prisma.property.findMany({
         where,
         include: withPhotos,
-        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        orderBy: SORT_ORDER[query.sortBy],
         skip: (page - 1) * limit,
         take: limit,
       }),

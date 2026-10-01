@@ -160,6 +160,15 @@ model Property {
   // Primary search path: published listings in a city, narrowed by locality.
   @@index([status, city, locality])
   @@index([ownerId])
+  // Sorting public listings: newest (the default) and by price (also serves minPrice/maxPrice).
+  @@index([status, createdAt])
+  @@index([status, price])
+  // Trigram indexes (pg_trgm extension, created in the migration) so case-insensitive substring search
+  // (q: ILIKE '%term%') uses an index instead of scanning every row.
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_title_trgm_idx")
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_description_trgm_idx")
+  @@index([city(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_city_trgm_idx")
+  @@index([locality(ops: raw("gin_trgm_ops"))], type: Gin, map: "Property_locality_trgm_idx")
 }
 
 model PropertyPhoto {

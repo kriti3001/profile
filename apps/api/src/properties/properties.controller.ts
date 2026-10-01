@@ -38,8 +38,11 @@ export class PropertiesController {
 
   @Get()
   @ApiOperation({
-    summary: 'List / filter properties (public)',
-    description: 'Only PUBLISHED listings unless status=RENTED is requested. Newest first, paginated.',
+    summary: 'Search / filter properties (public)',
+    description:
+      'Only PUBLISHED listings unless status=RENTED is requested. All filters combine (AND); list filters ' +
+      '(propertyType, bhk, furnishing) match any of their values. q searches title, description, city and locality. ' +
+      'Sorted by sortBy (default newest), paginated: the response includes total and totalPages.',
   })
   @ApiOkResponse({ type: PropertyListEntity })
   list(@Query() query: ListPropertiesQueryDto) {
