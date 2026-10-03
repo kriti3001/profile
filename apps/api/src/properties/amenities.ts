@@ -1,10 +1,12 @@
 /**
  * Amenity labels a listing may have, stored as-is in Property.amenities. Taken verbatim from the mock data in
  * apps/web/data/properties.js so it can be migrated without mapping. Add new labels here; no migration needed.
+ *
+ * Merged duplicates: "Wi-Fi Ready" -> "Wi-Fi", "Security" -> "24x7 Security". "Parking" (any parking) and
+ * "Covered Parking" are deliberately separate amenities.
  */
 export const AMENITIES = [
   // Homes (apartments, houses, villas, penthouses)
-  '24x7 Security',
   'Balcony',
   "Children's Play Area",
   'Clubhouse',
@@ -15,7 +17,6 @@ export const AMENITIES = [
   'Modular Kitchen',
   'Swimming Pool',
   'Water Purifier',
-  'Wi-Fi Ready',
   // Shared living (PG, co-living)
   'AC',
   'CCTV',
@@ -23,7 +24,6 @@ export const AMENITIES = [
   'Housekeeping',
   'Laundry',
   'Meals Included',
-  'Wi-Fi',
   // Commercial (shops, offices, warehouses)
   '24x7 Access',
   'Conference Room',
@@ -33,9 +33,10 @@ export const AMENITIES = [
   'Loading Dock',
   'Parking',
   'Power Load 5kW',
-  'Security',
   // Several kinds
+  '24x7 Security',
   'Power Backup',
+  'Wi-Fi',
 ] as const;
 
 export type Amenity = (typeof AMENITIES)[number];

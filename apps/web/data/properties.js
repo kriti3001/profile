@@ -27,7 +27,7 @@ const base = [
     amenities: [
       "Children's Play Area",
       "24x7 Security",
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Modular Kitchen"
     ],
     description: "This unfurnished 1BHK home is tucked into Sudama Nagar, Indore, an easy commute from the main market."
@@ -103,7 +103,7 @@ const base = [
     facing: "North",
     amenities: [
       "Modular Kitchen",
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Gym",
       "Balcony"
     ],
@@ -128,7 +128,7 @@ const base = [
     facing: "East",
     amenities: [
       "Children's Play Area",
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Gated Community",
       "Covered Parking",
       "Gym"
@@ -302,7 +302,7 @@ const base = [
     floor: "2nd of 7",
     facing: "North",
     amenities: [
-      "Security",
+      "24x7 Security",
       "Conference Room",
       "24x7 Access",
       "Power Load 5kW"
@@ -377,7 +377,7 @@ const base = [
     amenities: [
       "Children's Play Area",
       "Lift",
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Balcony",
       "24x7 Security"
     ],
@@ -426,7 +426,7 @@ const base = [
     floor: "13th of 14",
     facing: "South-East",
     amenities: [
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Power Backup",
       "Modular Kitchen"
     ],
@@ -500,7 +500,7 @@ const base = [
     floor: "G+2",
     facing: "North-West",
     amenities: [
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Gym",
       "Swimming Pool",
       "Power Backup"
@@ -576,7 +576,7 @@ const base = [
     amenities: [
       "Power Load 5kW",
       "High Footfall",
-      "Security",
+      "24x7 Security",
       "High-Speed Internet"
     ],
     description: "Office Space in RS Puram, Coimbatore, suitable for growing businesses in the area."
@@ -647,7 +647,7 @@ const base = [
     floor: "7th of 8",
     facing: "East",
     amenities: [
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Gym",
       "Covered Parking"
     ],
@@ -748,7 +748,7 @@ const base = [
     facing: "West",
     amenities: [
       "Lift",
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "24x7 Security",
       "Clubhouse",
       "Swimming Pool"
@@ -873,7 +873,7 @@ const base = [
     amenities: [
       "High-Speed Internet",
       "Loading Dock",
-      "Security"
+      "24x7 Security"
     ],
     description: "Retail Shop available in Manish Nagar, Nagpur — good visibility and access for daily operations."
   },
@@ -897,7 +897,7 @@ const base = [
     amenities: [
       "High-Speed Internet",
       "24x7 Access",
-      "Security",
+      "24x7 Security",
       "Power Load 5kW"
     ],
     description: "Well-located retail shop in Sitabuldi, Nagpur, ready for immediate fit-out."
@@ -1201,7 +1201,7 @@ const base = [
       "Conference Room",
       "24x7 Access",
       "Display Windows",
-      "Security"
+      "24x7 Security"
     ],
     description: "Retail Shop in Gomti Nagar, Lucknow, suitable for growing businesses in the area."
   },
@@ -1345,7 +1345,7 @@ const base = [
     floor: "7th of 14",
     facing: "South",
     amenities: [
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Balcony",
       "Water Purifier",
       "Modular Kitchen",
@@ -1371,7 +1371,7 @@ const base = [
     floor: "1st of 5",
     facing: "South-West",
     amenities: [
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Balcony",
       "Gated Community",
       "24x7 Security"
@@ -1396,7 +1396,7 @@ const base = [
     floor: "G+2",
     facing: "South",
     amenities: [
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "24x7 Security",
       "Gym"
     ],
@@ -1595,7 +1595,7 @@ const base = [
     amenities: [
       "Lift",
       "Clubhouse",
-      "Wi-Fi Ready"
+      "Wi-Fi"
     ],
     description: "Bright 2BHK apartment in a quiet pocket of Khandagiri, Bhubaneswar, close to schools and local transit."
   },
@@ -1619,7 +1619,7 @@ const base = [
     amenities: [
       "Clubhouse",
       "Children's Play Area",
-      "Wi-Fi Ready"
+      "Wi-Fi"
     ],
     description: "3BHK independent house available for rent in Saheed Nagar, Bhubaneswar — fully furnished and ready to move in."
   },
@@ -1642,7 +1642,7 @@ const base = [
     facing: "South",
     amenities: [
       "Swimming Pool",
-      "Wi-Fi Ready",
+      "Wi-Fi",
       "Gated Community"
     ],
     description: "2BHK independent house for sale in Saheed Nagar, Bhubaneswar, with clear title and bank-loan eligibility."
@@ -1668,7 +1668,7 @@ const base = [
       "24x7 Security",
       "Power Backup",
       "Water Purifier",
-      "Wi-Fi Ready"
+      "Wi-Fi"
     ],
     description: "Ready-to-move 3BHK independent house in Chandrasekharpur, Bhubaneswar, priced for the current local market."
   },
@@ -1767,7 +1767,7 @@ const base = [
     floor: "Ground",
     facing: "Corner Plot",
     amenities: [
-      "Security",
+      "24x7 Security",
       "24x7 Access",
       "Display Windows"
     ],
