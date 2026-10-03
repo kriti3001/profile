@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { List, Map as MapIcon, SlidersHorizontal, X } from "lucide-react";
-import { properties as allProperties } from "@/data/properties";
+import { AlertCircle, ChevronLeft, ChevronRight, List, Map as MapIcon, SlidersHorizontal, X } from "lucide-react";
 import PropertyCard from "./PropertyCard";
 import PropertyCardSkeleton from "./PropertyCardSkeleton";
 import FilterSidebar from "./FilterSidebar";
+import { emptyFilters, filtersToQuery } from "@/lib/listingFilters";
 import CityTrendWidget from "./trends/CityTrendWidget";
 import { trendCities } from "@/data/trends";
+import { apiFetch } from "@/lib/api";
+import { CATEGORY_TO_API, toViewProperty } from "@/lib/propertyLabels";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 12;
 
 const categoryLabels = {
   rent: "Rent",
@@ -19,87 +22,83 @@ const categoryLabels = {
   commercial: "Commercial",
 };
 
-const sortFns = {
-  relevant: (a, b) => Number(b.verified) - Number(a.verified),
-  priceLow: (a, b) => a.price - b.price,
-  priceHigh: (a, b) => b.price - a.price,
-  newest: (a, b) => new Date(b.availableFrom) - new Date(a.availableFrom),
-};
+const sortOptions = [
+  { value: "newest", label: "Newest" },
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+];
 
 export default function ListingsPage({ category, title, subtitle }) {
-  // Read ?q= / ?city= directly from the URL on mount instead of
-  // next/navigation's useSearchParams(). useSearchParams() forces this
-  // component behind a Suspense boundary, and since this site is a fully
-  // static export (no server to stream from), the build bakes the Suspense
-  // *fallback* into the static HTML instead of the real content — the page
-  // looked empty until client JS finished hydrating. Reading location.search
-  // in an effect keeps the full page in the static HTML immediately, and
-  // just narrows the results once the client mounts.
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("relevant");
+  const [city, setCity] = useState("");
+  const [sort, setSort] = useState("newest");
   const [view, setView] = useState("list");
   const [page, setPage] = useState(1);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    priceMax: null,
-    bhk: [],
-    furnishing: [],
-    type: [],
-    verifiedOnly: false,
-  });
+  const [filters, setFiltersState] = useState(emptyFilters);
+  const [retry, setRetry] = useState(0);
+  // Result of the last finished request, tagged with the request it answers.
+  const [result, setResult] = useState({ key: null, data: [], total: 0, totalPages: 0, error: null });
+
+  // Any filter change goes back to page 1.
+  const setFilters = (update) => {
+    setFiltersState(update);
+    setPage(1);
+  };
 
   useEffect(() => {
+    // Read ?q= (homepage search) and ?city= (Trending Localities links) directly from the URL on mount
+    // instead of next/navigation's useSearchParams(). useSearchParams() forces this component behind a
+    // Suspense boundary, and in a fully static export the build bakes the Suspense *fallback* into the
+    // HTML, so the page looked empty until client JS hydrated. The URL is an external system read once,
+    // not state derived from props.
     const params = new URLSearchParams(window.location.search);
-    const q = params.get("q") || params.get("city") || "";
-    // Reading the URL (an external system) once on mount, not derived from
-    // props/state — same justified case as AuthContext's session restore.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (q) setQuery(q);
-
-    // Brief simulated loading state — there's no real fetch here, but a
-    // silent instant swap-in reads as broken on a listings page users
-    // expect to "load".
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setQuery(params.get("q") ?? "");
+    setCity(params.get("city") ?? "");
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
-  const categoryProperties = useMemo(
-    () => allProperties.filter((p) => p.category === category),
-    [category]
+  // Typing and number inputs settle before a request goes out.
+  const debouncedQuery = useDebouncedValue(query.trim(), 350);
+  const debouncedFilters = useDebouncedValue(filters, 350);
+
+  const requestQuery = useMemo(
+    () => ({
+      category: CATEGORY_TO_API[category],
+      q: debouncedQuery || undefined,
+      city: city || undefined,
+      ...filtersToQuery(debouncedFilters),
+      sortBy: sort,
+      page,
+      limit: PAGE_SIZE,
+    }),
+    [category, debouncedQuery, city, debouncedFilters, sort, page],
   );
+  const requestKey = `${JSON.stringify(requestQuery)}#${retry}`;
 
-  const propertyTypes = useMemo(
-    () => Array.from(new Set(categoryProperties.map((p) => p.type))),
-    [categoryProperties]
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    apiFetch("/properties", { query: requestQuery, signal: controller.signal })
+      .then((res) =>
+        setResult({
+          key: requestKey,
+          data: res.data.map(toViewProperty),
+          total: res.total,
+          totalPages: res.totalPages,
+          error: null,
+        }),
+      )
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        setResult({ key: requestKey, data: [], total: 0, totalPages: 0, error: err.message });
+      });
+    return () => controller.abort();
+  }, [requestQuery, requestKey]);
 
-  const filtered = useMemo(() => {
-    let list = categoryProperties;
-
-    if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.city.toLowerCase().includes(q) ||
-          p.locality.toLowerCase().includes(q) ||
-          p.title.toLowerCase().includes(q)
-      );
-    }
-    if (filters.priceMax) list = list.filter((p) => p.price <= filters.priceMax);
-    if (filters.bhk.length) list = list.filter((p) => filters.bhk.includes(p.bhk));
-    if (filters.furnishing.length)
-      list = list.filter((p) => filters.furnishing.includes(p.furnishing));
-    if (filters.type.length) list = list.filter((p) => filters.type.includes(p.type));
-    if (filters.verifiedOnly) list = list.filter((p) => p.verified);
-
-    return [...list].sort(sortFns[sort]);
-  }, [categoryProperties, query, filters, sort]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const matchedCity = trendCities.find((c) => c.toLowerCase() === query.trim().toLowerCase());
+  const loading = result.key !== requestKey;
+  const { data: listings, total, totalPages, error } = result;
+  const matchedCity = trendCities.find((c) => c.toLowerCase() === (city || debouncedQuery).toLowerCase());
 
   return (
     <div className="bg-black/[0.015] min-h-[70vh]">
@@ -124,26 +123,41 @@ export default function ListingsPage({ category, title, subtitle }) {
           </nav>
           <h1 className="text-xl sm:text-2xl font-bold text-primary-800">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-black/55">{subtitle}</p>}
-          <div className="mt-4">
-            <div className="flex items-center gap-2 bg-black/5 rounded-full px-4 py-2.5 max-w-xl">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 bg-black/5 rounded-full px-4 py-2.5 w-full max-w-xl">
               <input
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search locality or city"
-                aria-label="Search locality or city"
+                placeholder="Search locality, city or keywords"
+                aria-label="Search locality, city or keywords"
                 className="w-full bg-transparent text-sm focus:outline-none"
               />
             </div>
+            {city && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 text-primary-700 text-xs font-medium pl-3 pr-1.5 py-1.5">
+                City: {city}
+                <button
+                  onClick={() => {
+                    setCity("");
+                    setPage(1);
+                  }}
+                  aria-label={`Remove city filter ${city}`}
+                  className="rounded-full p-0.5 hover:bg-primary-100"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       <div className="container-page py-6 flex flex-col lg:flex-row gap-6">
         <div className="hidden lg:block">
-          <FilterSidebar filters={filters} setFilters={setFilters} propertyTypes={propertyTypes} />
+          <FilterSidebar filters={filters} setFilters={setFilters} category={category} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -154,8 +168,17 @@ export default function ListingsPage({ category, title, subtitle }) {
           )}
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-sm text-black/55">
-              <span className="font-semibold text-primary-800">{filtered.length}</span> properties found
+            <p className="text-sm text-black/55" aria-live="polite">
+              {loading ? (
+                "Searching…"
+              ) : error ? (
+                " "
+              ) : (
+                <>
+                  <span className="font-semibold text-primary-800">{total}</span>{" "}
+                  {total === 1 ? "property" : "properties"} found
+                </>
+              )}
             </p>
 
             <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -168,14 +191,18 @@ export default function ListingsPage({ category, title, subtitle }) {
 
               <select
                 value={sort}
-                onChange={(e) => setSort(e.target.value)}
+                onChange={(e) => {
+                  setSort(e.target.value);
+                  setPage(1);
+                }}
                 aria-label="Sort properties"
                 className="text-sm border border-black/15 rounded-lg px-2.5 py-1.5 focus:outline-none"
               >
-                <option value="relevant">Most Relevant</option>
-                <option value="priceLow">Price: Low to High</option>
-                <option value="priceHigh">Price: High to Low</option>
-                <option value="newest">Newest</option>
+                {sortOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
 
               <div className="flex items-center rounded-lg border border-black/15 overflow-hidden text-sm">
@@ -210,47 +237,61 @@ export default function ListingsPage({ category, title, subtitle }) {
                   Map view is a static placeholder in this prototype
                 </p>
                 <p className="text-xs text-primary-500 mt-1">
-                  {filtered.length} pins would appear here in a live map integration
+                  {total} pins would appear here in a live map integration
                 </p>
               </div>
             </div>
           ) : loading ? (
             <div className="mt-5 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {Array.from({ length: PAGE_SIZE }, (_, i) => (
+              {Array.from({ length: 6 }, (_, i) => (
                 <PropertyCardSkeleton key={i} />
               ))}
             </div>
-          ) : (
-            <>
-              <div className="mt-5 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {paged.map((p) => (
-                  <PropertyCard key={p.id} property={p} />
-                ))}
-              </div>
-              {paged.length === 0 && (
-                <div className="py-16 text-center text-sm text-black/50">
-                  No properties match your filters. Try adjusting them.
-                </div>
-              )}
-            </>
-          )}
-
-          {view === "list" && totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-1.5">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setPage(n)}
-                  className={`w-8 h-8 rounded-lg text-sm font-medium ${
-                    page === n
-                      ? "bg-primary-500 text-white"
-                      : "border border-black/15 text-black/60 hover:bg-black/5"
-                  }`}
-                >
-                  {n}
+          ) : error ? (
+            <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-5 py-8 text-center">
+              <AlertCircle size={28} className="mx-auto text-red-500" />
+              <p className="mt-2 text-sm font-medium text-red-700">Couldn&apos;t load properties</p>
+              <p className="mt-1 text-xs text-red-600/80">{error}</p>
+              <button
+                onClick={() => setRetry((n) => n + 1)}
+                className="mt-4 rounded-lg bg-white border border-red-200 text-red-700 text-sm font-medium px-4 py-1.5 hover:bg-red-100"
+              >
+                Try again
+              </button>
+            </div>
+          ) : listings.length === 0 ? (
+            <div className="mt-5 rounded-xl border border-dashed border-black/15 bg-white py-16 text-center">
+              <p className="text-sm font-medium text-primary-800">No properties found</p>
+              <p className="mt-1 text-sm text-black/50">
+                {page > 1 ? "There are no more results on this page." : "Try removing a filter or searching a different area."}
+              </p>
+              {page > 1 ? (
+                <button onClick={() => setPage(1)} className="mt-4 text-sm font-medium text-primary-600 hover:underline">
+                  Back to page 1
                 </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setFilters(emptyFilters);
+                    setQuery("");
+                    setCity("");
+                  }}
+                  className="mt-4 text-sm font-medium text-primary-600 hover:underline"
+                >
+                  Clear search and filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="mt-5 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {listings.map((p) => (
+                <PropertyCard key={p.id} property={p} />
               ))}
             </div>
+          )}
+
+          {view === "list" && !loading && !error && totalPages > 1 && (
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           )}
         </div>
       </div>
@@ -265,16 +306,64 @@ export default function ListingsPage({ category, title, subtitle }) {
                 <X size={20} />
               </button>
             </div>
-            <FilterSidebar filters={filters} setFilters={setFilters} propertyTypes={propertyTypes} />
+            <FilterSidebar filters={filters} setFilters={setFilters} category={category} />
             <button
               onClick={() => setMobileFiltersOpen(false)}
               className="mt-6 w-full rounded-lg bg-primary-500 text-white text-sm font-semibold py-2.5"
             >
-              Show {filtered.length} results
+              {loading ? "Show results" : `Show ${total} result${total === 1 ? "" : "s"}`}
             </button>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** Prev / page numbers (a window around the current page, plus first and last) / Next. */
+function Pagination({ page, totalPages, onChange }) {
+  const pages = new Set([1, totalPages]);
+  for (let n = Math.max(1, page - 2); n <= Math.min(totalPages, page + 2); n++) pages.add(n);
+  const sorted = [...pages].sort((a, b) => a - b);
+  const go = (n) => {
+    onChange(n);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const btn = "h-8 min-w-8 px-2 rounded-lg text-sm font-medium";
+
+  return (
+    <nav className="mt-8 flex items-center justify-center gap-1.5 flex-wrap" aria-label="Pagination">
+      <button
+        onClick={() => go(page - 1)}
+        disabled={page === 1}
+        aria-label="Previous page"
+        className={`${btn} border border-black/15 text-black/60 hover:bg-black/5 disabled:opacity-30`}
+      >
+        <ChevronLeft size={16} />
+      </button>
+      {sorted.map((n, i) => (
+        <span key={n} className="flex items-center gap-1.5">
+          {i > 0 && n - sorted[i - 1] > 1 && <span className="text-black/30">…</span>}
+          <button
+            onClick={() => go(n)}
+            aria-current={page === n ? "page" : undefined}
+            className={`${btn} ${page === n ? "bg-primary-500 text-white" : "border border-black/15 text-black/60 hover:bg-black/5"}`}
+          >
+            {n}
+          </button>
+        </span>
+      ))}
+      <button
+        onClick={() => go(page + 1)}
+        disabled={page === totalPages}
+        aria-label="Next page"
+        className={`${btn} border border-black/15 text-black/60 hover:bg-black/5 disabled:opacity-30`}
+      >
+        <ChevronRight size={16} />
+      </button>
+      <span className="w-full text-center text-xs text-black/40 mt-1">
+        Page {page} of {totalPages}
+      </span>
+    </nav>
   );
 }

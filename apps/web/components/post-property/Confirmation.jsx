@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { portals } from "@/data/portals";
+import { propertyHref } from "@/lib/propertyLabels";
 
-export default function Confirmation({ data }) {
+export default function Confirmation({ data, propertyId }) {
   const activePortals = portals.filter((p) => data.portals[p.id]);
+  const uploaded = data.photos.filter((p) => p.status === "uploaded").length;
 
   return (
     <div className="text-center max-w-lg mx-auto">
@@ -12,6 +14,7 @@ export default function Confirmation({ data }) {
       <p className="mt-2 text-sm text-black/55">
         Your listing is now visible on {activePortals.length} platform{activePortals.length === 1 ? "" : "s"},
         including BharosaGhar direct.
+        {data.photos.length > 0 && ` ${uploaded} photo${uploaded === 1 ? "" : "s"} uploaded.`}
       </p>
 
       <div className="mt-8 rounded-2xl border border-black/10 overflow-hidden text-left">
@@ -50,6 +53,14 @@ export default function Confirmation({ data }) {
       )}
 
       <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+        {propertyId && (
+          <Link
+            href={propertyHref(propertyId)}
+            className="rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold px-6 py-2.5"
+          >
+            View Listing
+          </Link>
+        )}
         <Link
           href="/dashboard"
           className="rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold px-6 py-2.5"

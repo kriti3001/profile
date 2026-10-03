@@ -35,16 +35,18 @@ export default function Step2Price({ data, update }) {
           />
         </Field>
 
-        <Field label="Security Deposit (₹)" hint="Leave blank if not applicable">
-          <input
-            type="number"
-            min="0"
-            className={inputClass}
-            placeholder="e.g. 50000"
-            value={data.deposit}
-            onChange={(e) => update({ deposit: e.target.value })}
-          />
-        </Field>
+        {data.purpose !== "sale" && (
+          <Field label="Security Deposit (₹)" hint="Leave blank if not applicable">
+            <input
+              type="number"
+              min="0"
+              className={inputClass}
+              placeholder="e.g. 50000"
+              value={data.deposit}
+              onChange={(e) => update({ deposit: e.target.value })}
+            />
+          </Field>
+        )}
 
         <Field label="Available From">
           <input

@@ -2,13 +2,10 @@ import SearchBar from "@/components/SearchBar";
 import TrustStrip from "@/components/TrustStrip";
 import WhySection from "@/components/WhySection";
 import LocalitiesSection from "@/components/LocalitiesSection";
-import PropertyCarousel from "@/components/PropertyCarousel";
+import TrendingListings from "@/components/TrendingListings";
 import Testimonials from "@/components/Testimonials";
-import { properties } from "@/data/properties";
 
 export default function Home() {
-  const trending = properties.filter((p) => p.category === "rent" && p.verified).slice(0, 8);
-
   return (
     <>
       <section className="relative overflow-hidden bg-primary-900">
@@ -44,8 +41,7 @@ export default function Home() {
       <WhySection />
       <LocalitiesSection />
 
-      <PropertyCarousel
-        properties={trending}
+      <TrendingListings
         title="Trending Rentals"
         subtitle="Fresh, verified listings from owners and brokers near you."
       />

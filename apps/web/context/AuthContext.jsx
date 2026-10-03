@@ -13,11 +13,11 @@ import { API_BASE_URL, apiScopes, authConfigured, msalConfig } from "@/lib/authC
 // Real auth via Microsoft Entra External ID (MSAL). The context keeps the shape the
 // mock version exposed — { user, ready, login, logout } with user = { name, role, phone } —
 // so Navbar, DashboardShell and the account page work unchanged. `user` is the app's own
-// User record from GET /auth/me, with role lowercased ("owner" | "broker" | "tenant").
+// User record from GET /users/me, with role lowercased ("owner" | "broker" | "tenant").
 const AuthContext = createContext(null);
 
 // Role picked in the sign-up modal, held across the Entra redirect and sent on the first
-// /auth/me call (the API only applies it when it creates the user record).
+// /users/me call (the API only applies it when it creates the user record).
 const PENDING_ROLE_KEY = "bharosaghar_pending_role";
 
 export function AuthProvider({ children }) {
@@ -59,13 +59,16 @@ function SignedOutAuth({ children }) {
 
 function MsalAuth({ children }) {
   const { instance, accounts, inProgress } = useMsal();
-  const account = instance.getActiveAccount() ?? accounts[0] ?? null;
-  const accountId = account?.homeAccountId ?? null;
-  // Result of GET /auth/me for `accountId`.
+  // MSAL returns a new account object on every call (it re-reads its cache), so callbacks and effects
+  // key on the stable homeAccountId string and look the account up when they run. Depending on the
+  // object itself made getAccessToken change every render, re-running every effect that used it.
+  const accountId = (instance.getActiveAccount() ?? accounts[0])?.homeAccountId ?? null;
+  // Result of GET /users/me for `accountId`.
   const [me, setMe] = useState({ accountId: null, user: null, error: null });
 
   const getAccessToken = useCallback(async () => {
-    if (!account) throw new Error("Not signed in");
+    const account = instance.getActiveAccount() ?? instance.getAllAccounts()[0];
+    if (!accountId || !account) throw new Error("Not signed in");
     try {
       const result = await instance.acquireTokenSilent({ scopes: apiScopes, account });
       return result.accessToken;
@@ -75,7 +78,7 @@ function MsalAuth({ children }) {
       }
       throw err;
     }
-  }, [instance, account]);
+  }, [instance, accountId]);
 
   useEffect(() => {
     if (inProgress !== InteractionStatus.None || !accountId) return;
@@ -84,14 +87,14 @@ function MsalAuth({ children }) {
     (async () => {
       try {
         const token = await getAccessToken();
-        const url = new URL("/auth/me", API_BASE_URL);
+        const url = new URL("/users/me", API_BASE_URL);
         const pendingRole = readSession(PENDING_ROLE_KEY);
         if (pendingRole) url.searchParams.set("role", pendingRole);
 
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body.message || `GET /auth/me failed (${res.status})`);
+          throw new Error(body.message || `GET /users/me failed (${res.status})`);
         }
         const dbUser = await res.json();
         removeSession(PENDING_ROLE_KEY);
@@ -116,8 +119,8 @@ function MsalAuth({ children }) {
 
   const logout = useCallback(() => {
     removeSession(PENDING_ROLE_KEY);
-    instance.logoutRedirect({ account }).catch(() => {});
-  }, [instance, account]);
+    instance.logoutRedirect({ account: instance.getActiveAccount() ?? instance.getAllAccounts()[0] }).catch(() => {});
+  }, [instance]);
 
   const settled = me.accountId === accountId;
   const value = {

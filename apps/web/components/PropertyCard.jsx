@@ -1,27 +1,31 @@
 import Link from "next/link";
-import { BedDouble, Ruler, MapPin, User2 } from "lucide-react";
-import PlaceholderImage from "./PlaceholderImage";
+import { BedDouble, Ruler, MapPin } from "lucide-react";
+import PropertyImage from "./PropertyImage";
 import VerifiedBadge from "./VerifiedBadge";
 import { formatPrice } from "@/lib/format";
+import { propertyHref } from "@/lib/propertyLabels";
 
+// `property` is a view property (lib/propertyLabels toViewProperty).
 export default function PropertyCard({ property }) {
   return (
     <Link
-      href={`/property/${property.id}`}
+      href={propertyHref(property.id)}
       className="group block rounded-xl border border-black/10 bg-white overflow-hidden hover:shadow-lg hover:border-primary-100 transition-all"
     >
       <div className="relative">
-        <PlaceholderImage
-          seed={property.images[0]}
+        <PropertyImage
+          src={property.photoUrls[0]}
+          seed={property.id}
           label={property.title}
           className="h-44 w-full"
         />
         <div className="absolute top-2 left-2 flex gap-1.5">
           {property.verified && <VerifiedBadge />}
-          <span className="inline-flex items-center rounded-full bg-white/90 backdrop-blur text-[11px] font-medium px-2 py-0.5 text-primary-700 border border-black/10">
-            <User2 size={11} className="mr-1" />
-            {property.postedBy}
-          </span>
+          {property.status === "RENTED" && (
+            <span className="inline-flex items-center rounded-full bg-white/90 backdrop-blur text-[11px] font-medium px-2 py-0.5 text-black/60 border border-black/10">
+              Rented
+            </span>
+          )}
         </div>
       </div>
 
